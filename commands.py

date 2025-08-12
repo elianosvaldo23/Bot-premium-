@@ -1,0 +1,205 @@
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
+
+from config import ADMIN_ID
+from helpers import is_group_admin, add_premium_emojis
+
+class CommandHandlers:
+    def __init__(self, db_manager):
+        self.db = db_manager
+    
+    async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        user_id = update.effective_user.id if update.effective_user else None
+        chat_type = update.effective_chat.type if update.effective_chat else 'private'
+        
+        if chat_type == 'private':
+            if user_id == ADMIN_ID:
+                keyboard = [
+                    [InlineKeyboardButton("🏠 Panel de Administración", callback_data="admin_panel")],
+                    [InlineKeyboardButton("📊 Ver Grupos", callback_data="view_groups")],
+                    [InlineKeyboardButton("ℹ️ Información", callback_data="bot_info")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                welcome_admin_text = """
+:crown_premium: **¡Hola Administrador\!** :crown_premium:
+
+:rocket_premium: Bienvenido al panel de control del bot\.
+
+:star_premium: Desde aquí puedes administrar todos los grupos y configuraciones\.
+
+:fire_premium: **¡Nuevo\!** Soporte completo para emojis premium de Telegram
+"""
+                formatted_text = add_premium_emojis(welcome_admin_text, "MarkdownV2")
+                
+                await update.message.reply_text(
+                    formatted_text,
+                    reply_markup=reply_markup,
+                    parse_mode="MarkdownV2"
+                )
+            else:
+                user_text = """
+:party_premium: ¡Hola! Soy un bot administrador de grupos premium :diamond_premium:
+
+:rocket_premium: Añádeme a tu grupo para comenzar a usar mis funciones avanzadas :magic_premium:
+"""
+                formatted_text = add_premium_emojis(user_text, "MarkdownV2")
+                
+                await update.message.reply_text(
+                    formatted_text,
+                    parse_mode="MarkdownV2"
+                )
+        else:
+            group_text = """
+:crown_premium: ¡Hola! Soy tu nuevo bot administrador premium :fire_premium:
+
+:check_premium: Los administradores pueden configurarme usando /admin
+
+:star_premium: ¡Gracias por añadirme al grupo!
+"""
+            formatted_text = add_premium_emojis(group_text, "MarkdownV2")
+            
+            await update.message.reply_text(
+                formatted_text,
+                parse_mode="MarkdownV2"
+            )
+    
+    async def admin_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        user_id = update.effective_user.id if update.effective_user else None
+        chat_id = update.effective_chat.id
+
+        is_admin = await is_group_admin(context, chat_id, user_id)
+        
+        if not is_admin:
+            await update.message.reply_text("❌ Solo los administradores pueden usar este comando.")
+            return
+        
+        keyboard = [
+            [InlineKeyboardButton("🎉 Configurar Bienvenida", callback_data=f"config_welcome_{chat_id}")],
+            [InlineKeyboardButton("⚙️ Configuraciones del Grupo", callback_data=f"group_settings_{chat_id}")],
+            [InlineKeyboardButton("📊 Estadísticas", callback_data=f"group_stats_{chat_id}")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        admin_panel_text = """
+:crown_premium: **Panel de Administración** :crown_premium:
+
+:rocket_premium: Selecciona una opción para configurar:
+
+:magic_premium: **¡Nuevo\!** Sistema de emojis premium disponible
+"""
+        formatted_text = add_premium_emojis(admin_panel_text, "MarkdownV2")
+        
+        await update.message.reply_text(
+            formatted_text,
+            reply_markup=reply_markup,
+            parse_mode="MarkdownV2"
+        )
+
+    async def premium_emojis_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        user_id = update.effective_user.id if update.effective_user else None
+        
+        if user_id != ADMIN_ID:
+            await update.message.reply_text("❌ Solo el administrador puede ver esta información.")
+            return
+        
+        emoji_demo = """
+:crown_premium: **Emojis Premium Disponibles** :crown_premium:
+
+**Emojis de estado:**
+:crown_premium: Corona Premium \- `:crown_premium:`
+:crown_gold: Corona Dorada \- `:crown_gold:`
+:star_premium: Estrella Premium \- `:star_premium:`
+:diamond_premium: Diamante Premium \- `:diamond_premium:`
+:gem_premium: Gema Premium \- `:gem_premium:`
+
+**Emojis de acción:**
+:fire_premium: Fuego Premium \- `:fire_premium:`
+:rocket_premium: Cohete Premium \- `:rocket_premium:`
+:lightning_premium: Rayo Premium \- `:lightning_premium:`
+:magic_premium: Magia Premium \- `:magic_premium:`
+:check_premium: Check Premium \- `:check_premium:`
+
+**Emojis de celebración:**
+:party_premium: Fiesta Premium \- `:party_premium:`
+:trophy_premium: Trofeo Premium \- `:trophy_premium:`
+:heart_premium: Corazón Premium \- `:heart_premium:`
+
+**Emojis de números:**
+:five_premium: Cinco Premium \- `:five_premium:`
+:zero_premium: Cero Premium \- `:zero_premium:`
+:plus_premium: Plus Premium \- `:plus_premium:`
+
+**Emojis diversos:**
+:cocktail_premium: Cóctel Premium \- `:cocktail_premium:`
+:globe_premium: Globo Premium \- `:globe_premium:`
+:free_premium: Gratis Premium \- `:free_premium:`
+:down_arrow_premium: Flecha Abajo \- `:down_arrow_premium:`
+:point_left_premium: Señalar Izq\. \- `:point_left_premium:`
+:tongue_premium: Lengua Premium \- `:tongue_premium:`
+:wow_premium: Sorpresa Premium \- `:wow_premium:`
+
+**Ejemplo de uso en mensajes:**
+¡Bienvenido :crown_premium: {mention} al grupo :fire_premium: {group_name}! :star_premium: Disfruta tu estancia :rocket_premium:
+
+
+:magic_premium: **Los emojis premium solo se muestran en MarkdownV2\!**
+"""
+        
+        formatted_text = add_premium_emojis(emoji_demo, "MarkdownV2")
+        
+        await update.message.reply_text(
+            formatted_text,
+            parse_mode="MarkdownV2"
+        )
+
+    async def set_welcome_topic(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        chat = update.effective_chat
+        user_id = update.effective_user.id if update.effective_user else None
+
+        if not chat or chat.type not in ("supergroup", "group"):
+            await update.message.reply_text("Este comando solo funciona dentro de un grupo.")
+            return
+
+        is_admin = await is_group_admin(context, chat.id, user_id)
+        if not is_admin:
+            await update.message.reply_text("❌ Solo los administradores pueden configurar el tema.")
+            return
+
+        is_forum = getattr(chat, "is_forum", False)
+        if not is_forum:
+            await update.message.reply_text("Este grupo no tiene temas habilitados. No es necesario configurar un tema.")
+            return
+
+        thread_id = getattr(update.message, "message_thread_id", None)
+        if thread_id is None:
+            await update.message.reply_text("Por favor ejecuta /setwelcometopic dentro del tema (hilo) deseado.")
+            return
+
+        await self.db.set_group_welcome_thread(chat.id, thread_id)
+        
+        success_text = f":check_premium: Tema para bienvenidas configurado \\(thread\\_id={thread_id}\\)\\."
+        formatted_text = add_premium_emojis(success_text, "MarkdownV2")
+        
+        await update.message.reply_text(formatted_text, parse_mode="MarkdownV2")
+
+    async def clear_welcome_topic(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        chat = update.effective_chat
+        user_id = update.effective_user.id if update.effective_user else None
+
+        if not chat or chat.type not in ("supergroup", "group"):
+            await update.message.reply_text("Este comando solo funciona dentro de un grupo.")
+            return
+
+        is_admin = await is_group_admin(context, chat.id, user_id)
+        if not is_admin:
+            await update.message.reply_text("❌ Solo los administradores pueden usar este comando.")
+            return
+
+        await self.db.clear_group_welcome_thread(chat.id)
+        
+        clear_text = ":check_premium: Se ha limpiado la configuración del tema de bienvenida\\."
+        formatted_text = add_premium_emojis(clear_text, "MarkdownV2")
+        
+        await update.message.reply_text(formatted_text, parse_mode="MarkdownV2")
