@@ -438,7 +438,8 @@ class CallbackHandlers:
             admin_chat_id = query.from_user.id
 
             if pmode.lower().startswith("markdown"):
-                preview_text = f":magic_premium: **Vista previa de bienvenida para:** {group_name.replace('.', '\\.')}\n\n{text}"
+                safe_group_name = group_name.replace('.', '\\.')
+                preview_text = f":magic_premium: **Vista previa de bienvenida para:** {safe_group_name}\n\n{text}"
                 preview_text = add_premium_emojis(preview_text, pmode)
             else:
                 preview_text = f"🧪 **Vista previa de bienvenida para:** {group_name}\n\n{text}"
@@ -462,8 +463,8 @@ class CallbackHandlers:
                 await query.answer("✅ Vista previa enviada a tu chat privado")
             except BadRequest as e:
                 if "can't parse entities" in str(e).lower():
-                    safe_text = format_welcome_message(root['text'] or "", query.from_user, group_name, parse_mode=None)
-                    safe_preview = f"🧪 Vista previa de bienvenida para: {group_name}\n\n{safe_text}"
+                    safe_message = format_welcome_message(root['text'] or "", query.from_user, group_name, parse_mode=None)
+                    safe_preview = f"🧪 Vista previa de bienvenida para: {group_name}\n\n{safe_message}"
                     try:
                         if root.get('image_url'):
                             await query.bot.send_photo(
@@ -534,10 +535,12 @@ class CallbackHandlers:
         text = ":star_premium: **Lista de Grupos Registrados** :star_premium:\n\n"
         keyboard = []
         for group in groups:
-            text += f":check_premium: {group[1]}\n"
+            safe_group_name = group[1].replace('.', '\\.')
+            safe_date = format_date(group[7]).replace('.', '\\.')
+            text += f":check_premium: {safe_group_name}\n"
             text += f"  🆔 ID: `{group[0]}`\n"
             text += f"  👥 Miembros: {group[6]}\n"
-            text += f"  📅 Añadido: {format_date(group[7])}\n\n"
+            text += f"  📅 Añadido: {safe_date}\n\n"
             keyboard.append([InlineKeyboardButton(
                 f"⚙️ {truncate_text(group[1], 25)}",
                 callback_data=f"config_group_{group[0]}"
@@ -563,13 +566,16 @@ class CallbackHandlers:
         status = ":check_premium: Activado" if welcome_config and welcome_config[1] else "❌ Desactivado"
         message_preview = truncate_text(root_node['text'] or "", 120) if root_node else "Sin mensaje"
 
+        safe_group_name = group[1].replace('.', '\\.')
+        safe_message_preview = message_preview.replace('.', '\\.')
+
         text = f"""
 :party_premium: **Configuración de Bienvenida** :party_premium:
 
-**Grupo:** {group[1].replace('.', '\\.')}
+**Grupo:** {safe_group_name}
 **Estado:** {status}
 **Mensaje actual:**
-{message_preview.replace('.', '\\.')}
+{safe_message_preview}
 
 **Botones configurados:** {buttons_count}
 **Imagen:** {':check_premium: Sí' if root_node and root_node.get('image_url') else '❌ No'}
@@ -604,9 +610,12 @@ class CallbackHandlers:
             for i, row in enumerate(buttons, 1):
                 for j, b in enumerate(row, 1):
                     if b.get('type') == 'url':
-                        text += f":point_left_premium: [{i}\\.{j}] URL: {b.get('text', '').replace('.', '\\.')} → {b.get('url', '').replace('.', '\\.')}\n"
+                        safe_text = b.get('text', '').replace('.', '\\.')
+                        safe_url = b.get('url', '').replace('.', '\\.')
+                        text += f":point_left_premium: [{i}\\.{j}] URL: {safe_text} → {safe_url}\n"
                     elif b.get('type') == 'node':
-                        text += f":point_left_premium: [{i}\\.{j}] Submenú: {b.get('text', '').replace('.', '\\.')} → Node {b.get('node_id')}\n"
+                        safe_text = b.get('text', '').replace('.', '\\.')
+                        text += f":point_left_premium: [{i}\\.{j}] Submenú: {safe_text} → Node {b.get('node_id')}\n"
         else:
             text += "No hay botones en este nodo\\.\n"
 
@@ -809,7 +818,8 @@ class CallbackHandlers:
 :crown_premium: **Top 5 grupos \\(por bienvenidas\\):**
 """
         for i, group in enumerate(stats['top_groups'], 1):
-            text += f"{i}\\. {group[0].replace('.', '\\.')}: {group[1]} bienvenidas\n"
+            safe_group_name = group[0].replace('.', '\\.')
+            text += f"{i}\\. {safe_group_name}: {group[1]} bienvenidas\n"
         
         keyboard = [
             [InlineKeyboardButton("🔄 Actualizar Stats", callback_data="general_stats")],
@@ -865,7 +875,8 @@ class CallbackHandlers:
         for group in groups:
             welcome_config = await self.db.get_welcome_settings(group[0])
             status = ":check_premium:" if welcome_config and welcome_config[1] else "❌"
-            text += f"{status} {group[1].replace('.', '\\.')}\n"
+            safe_group_name = group[1].replace('.', '\\.')
+            text += f"{status} {safe_group_name}\n"
             keyboard.append([InlineKeyboardButton(
                 f"{status} {truncate_text(group[1], 25)}",
                 callback_data=f"config_welcome_{group[0]}"
@@ -880,11 +891,13 @@ class CallbackHandlers:
         datefmt = settings.get('date_format', '%d/%m/%Y %H:%M')
         parse_mode = settings.get('default_parse_mode', 'HTML')
 
+        safe_datefmt = datefmt.replace('%', '\\%')
+
         text = f"""
 :gear_premium: **Configuraciones Globales** :gear_premium:
 
 :globe_premium: **Idioma:** {language}
-:calendar_premium: **Formato de fecha:** {datefmt.replace('%', '\\%')}
+:calendar_premium: **Formato de fecha:** {safe_datefmt}
 :magic_premium: **Parse Mode por defecto:** {parse_mode}
 
 :star_premium: Ajusta una opción:
@@ -926,15 +939,19 @@ class CallbackHandlers:
         is_forum = bool(group[9])
         welcome_thread_id = group[10]
 
+        safe_group_name = group[1].replace('.', '\\.')
+        safe_added_by = group[5].replace('.', '\\.')
+        safe_date = format_date(group[7]).replace('.', '\\.')
+
         text = f"""
 :gear_premium: **Configuraciones del Grupo** :gear_premium:
 
-:star_premium: **Nombre:** {group[1].replace('.', '\\.')}
+:star_premium: **Nombre:** {safe_group_name}
 :gem_premium: **ID:** `{chat_id}`
 :rocket_premium: **Tipo:** {group[2]}
 :crown_premium: **Miembros:** {group[6]}
-:check_premium: **Añadido por:** {group[5].replace('.', '\\.')}
-:calendar_premium: **Fecha de adición:** {format_date(group[7]).replace('.', '\\.')}
+:check_premium: **Añadido por:** {safe_added_by}
+:calendar_premium: **Fecha de adición:** {safe_date}
 :magic_premium: **Temas habilitados:** {'Sí' if is_forum else 'No'}
 :lightning_premium: **Tema de bienvenidas:** {welcome_thread_id if welcome_thread_id is not None else 'No configurado'}
 """
@@ -964,14 +981,17 @@ class CallbackHandlers:
         welcomes_sent = stats[1] if stats else 0
         last_activity = format_date(stats[2]) if stats and stats[2] else "Nunca"
 
+        safe_group_name = group[1].replace('.', '\\.')
+        safe_last_activity = last_activity.replace('.', '\\.')
+
         text = f"""
 :trophy_premium: **Estadísticas del Grupo** :trophy_premium:
 
-:star_premium: **Grupo:** {group[1].replace('.', '\\.')}
+:star_premium: **Grupo:** {safe_group_name}
 :crown_premium: **Miembros actuales:** {group[6]}
 :calendar_premium: **Días activo:** {days_active}
 :party_premium: **Bienvenidas enviadas:** {welcomes_sent}
-:lightning_premium: **Última actividad:** {last_activity.replace('.', '\\.')}
+:lightning_premium: **Última actividad:** {safe_last_activity}
 """
         keyboard = [
             [InlineKeyboardButton("🔄 Actualizar Stats", callback_data=f"refresh_stats_{chat_id}")],
