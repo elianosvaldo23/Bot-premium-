@@ -75,22 +75,29 @@ class MessageHandlers:
 
         await self.db.add_group(
             chat.id, title, chat.type, user.id if user else None,
-            (user.username if user else None), (f"{user.first_name} {user.last_name or ''}".strip() if user else "Desconocido"),
+            (user.username if user else None), 
+            (f"{user.first_name} {user.last_name or ''}".strip() if user else "Desconocido"),
             member_count, is_forum
         )
 
         keyboard = [[InlineKeyboardButton("✅ Configurar Grupo", callback_data=f"config_group_{chat.id}")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
+        # Escapar caracteres problemáticos antes de usar en f-string
+        safe_title = title.replace('.', '\\.')
+        safe_username = user.username or 'Sin username' if user else '-'
+        safe_first_name = user.first_name.replace('.', '\\.') if user else 'Desconocido'
+        safe_date = datetime.now().strftime('%d/%m/%Y %H:%M').replace('.', '\\.')
+        
         notification_text = f"""
 :crown_premium: **Bot añadido a nuevo grupo** :crown_premium:
 
-:star_premium: **Grupo:** {title.replace('.', '\\.')}
+:star_premium: **Grupo:** {safe_title}
 :gem_premium: **ID:** `{chat.id}`
-:rocket_premium: **Añadido por:** {user.first_name.replace('.', '\\.') if user else 'Desconocido'} \\(@{user.username or 'Sin username' if user else '-'}\\)
+:rocket_premium: **Añadido por:** {safe_first_name} \\(@{safe_username}\\)
 :check_premium: **Miembros:** {member_count}
 :magic_premium: **Temas habilitados:** {'Sí' if is_forum else 'No'}
-:calendar_premium: **Fecha:** {datetime.now().strftime('%d/%m/%Y %H:%M').replace('.', '\\.')}
+:calendar_premium: **Fecha:** {safe_date}
 """
         
         formatted_notification = add_premium_emojis(notification_text, "MarkdownV2")
